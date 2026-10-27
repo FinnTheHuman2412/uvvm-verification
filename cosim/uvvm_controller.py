@@ -4,6 +4,7 @@ from cocotb.triggers import Timer, RisingEdge, with_timeout
 class UVVMController:
     UART_TX = 0
     SBI_WRITE = 1
+    SBI_CHECK = 2
 
     def __init__(self, dut):
         self.dut = dut
@@ -52,4 +53,11 @@ class UVVMController:
         self.dut._log.info(
             "UVVM SBI write completed: address=%d, value=0x%02X",
             address, value
+        )
+
+    async def sbi_check(self, address, expected):
+        await self._execute(self.SBI_CHECK, address, expected)
+        self.dut._log.info(
+            "UVVM SBI check completed: address=%d, expected=0x%02X",
+            address, expected
         )

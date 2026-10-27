@@ -30,3 +30,14 @@ async def test_python_sbi_write(dut):
     await uvvm.sbi_write(address=2, value=0x55)
 
     dut._log.info("SBI-to-UART verification completed")
+
+
+@cocotb.test()
+async def test_python_sbi_check(dut):
+    uvvm = UVVMController(dut)
+
+    await Timer(500, unit="ns")
+
+    await uvvm.sbi_check(address=3, expected=0x01)
+
+    dut._log.info("SBI register verification completed")

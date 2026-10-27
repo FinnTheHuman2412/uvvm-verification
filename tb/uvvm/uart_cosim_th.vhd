@@ -121,6 +121,11 @@ begin
 
           await_completion(UART_VVCT, 1, RX, 13 * 16 * C_CLK_PERIOD);
 
+        when "10" =>
+          -- Check an SBI register against the Python-supplied value.
+          sbi_check(SBI_VVCT, 1, cmd_addr, cmd_data, "Python SBI check");
+          await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
+
         when others =>
           report "Unsupported Python UVVM opcode" severity failure;
       end case;
