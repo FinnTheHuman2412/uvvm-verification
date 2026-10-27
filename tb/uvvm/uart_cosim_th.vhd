@@ -42,8 +42,10 @@ library bitvis_vip_clock_generator;
 -- Test harness entity
 entity uart_cosim_th is
   port (
-    cmd_valid : in  std_logic;
-    cmd_data  : in  std_logic_vector(7 downto 0);
+    cmd_valid  : in  std_logic;
+    cmd_opcode : in  std_logic_vector(1 downto 0);
+    cmd_addr   : in  unsigned(2 downto 0);
+    cmd_data   : in  std_logic_vector(7 downto 0);
     cmd_busy  : out std_logic := '0';
     cmd_done  : out std_logic := '0'
   );
@@ -89,21 +91,39 @@ begin
     shared_uart_vvc_config(TX, 1).bfm_config.bit_time :=
       16 * C_CLK_PERIOD;
 
+    shared_uart_vvc_config(RX, 1).bfm_config.bit_time :=
+      16 * C_CLK_PERIOD;
+
     loop
       wait until cmd_valid = '1';
 
       cmd_busy <= '1';
       cmd_done <= '0';
 
-      uart_transmit(UART_VVCT, 1, TX, cmd_data, "Python request");
-      await_completion(UART_VVCT, 1, TX, 13 * 16 * C_CLK_PERIOD);
+      case cmd_opcode is
+        when "00" =>
+          -- UART transmit followed by DUT readback verification.
+          uart_transmit(UART_VVCT, 1, TX, cmd_data, "Python UART TX");
+          await_completion(UART_VVCT, 1, TX, 13 * 16 * C_CLK_PERIOD);
 
-      -- Allow the UART receiver to complete.
-      wait for 200 ns;
+          wait for 200 ns;
 
-      -- Independently check the received byte through the SBI interface.
-      sbi_check(SBI_VVCT, 1, C_ADDR_RX_DATA, cmd_data, "RX_DATA");
-      await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
+          sbi_check(SBI_VVCT, 1, C_ADDR_RX_DATA, cmd_data, "RX_DATA");
+          await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
+
+        when "01" =>
+          -- Write a UART register through the SBI VVC.
+          -- Expect the UART DUT to transmit the written byte.
+          uart_expect(UART_VVCT, 1, RX, cmd_data, "Python UART expect");
+
+          sbi_write(SBI_VVCT, 1, cmd_addr, cmd_data, "Python SBI write");
+          await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
+
+          await_completion(UART_VVCT, 1, RX, 13 * 16 * C_CLK_PERIOD);
+
+        when others =>
+          report "Unsupported Python UVVM opcode" severity failure;
+      end case;
 
       cmd_busy <= '0';
       cmd_done <= '1';

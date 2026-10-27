@@ -19,3 +19,14 @@ async def test_multiple_python_uvvm_commands(dut):
         "All %d UART transactions verified",
         len(test_values)
     )
+
+
+@cocotb.test()
+async def test_python_sbi_write(dut):
+    uvvm = UVVMController(dut)
+
+    await Timer(500, unit="ns")
+
+    await uvvm.sbi_write(address=2, value=0x55)
+
+    dut._log.info("SBI-to-UART verification completed")
