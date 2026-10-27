@@ -1,7 +1,6 @@
 import os
 
 import cocotb
-from cocotb.clock import Clock
 from cocotb.triggers import Timer, RisingEdge
 
 
@@ -49,7 +48,6 @@ async def benchmark_direct_uart(dut):
     count = int(os.environ.get("BENCH_N", "5"))
     assert count > 0
 
-    dut.clk.value = 0
     dut.arst.value = 1
     dut.cs.value = 0
     dut.addr.value = 0
@@ -57,8 +55,6 @@ async def benchmark_direct_uart(dut):
     dut.rd.value = 0
     dut.wdata.value = 0
     dut.rx_a.value = 1
-
-    cocotb.start_soon(Clock(dut.clk, CLOCK_NS, unit="ns").start())
 
     await Timer(50, unit="ns")
     dut.arst.value = 0

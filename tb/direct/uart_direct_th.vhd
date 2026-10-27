@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 entity uart_direct_th is
   port (
-    clk   : in std_logic := '0';
+    clk   : out std_logic := '0';
     arst  : in std_logic := '1';
 
     cs    : in std_logic := '0';
@@ -20,7 +20,12 @@ entity uart_direct_th is
 end entity;
 
 architecture sim of uart_direct_th is
+  signal clk_i : std_logic := '0';
 begin
+
+  -- Generate a 10 ns clock entirely in VHDL.
+  clk_i <= not clk_i after 5 ns;
+  clk <= clk_i;
 
   i_uart : entity work.uart
     generic map (
@@ -28,7 +33,7 @@ begin
       GC_MIN_EQUAL_SAMPLES_PER_BIT => 15
     )
     port map (
-      clk   => clk,
+      clk   => clk_i,
       arst  => arst,
       cs    => cs,
       addr  => addr,
