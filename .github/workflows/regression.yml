@@ -31,6 +31,12 @@ jobs:
       - name: Install cocotb
         run: python -m pip install cocotb==2.1.0
 
+      - name: Configure Python shared library
+        run: |
+          LIBPYTHON="$(python -c 'import sysconfig, os; print(os.path.join(sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LDLIBRARY")))')"
+          test -f "$LIBPYTHON"
+          echo "LD_PRELOAD=$LIBPYTHON" >> "$GITHUB_ENV"
+
       - name: Run regression
         run: make regression
 
