@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent
 CSV = ROOT / "results" / "scaling.csv"
 
 EXPECTED_COUNTS = (5, 50, 500, 2000)
-IMPLEMENTATIONS = ("native", "python")
+IMPLEMENTATIONS = ("native", "python", "direct")
 
 
 def load_results():
@@ -142,13 +142,17 @@ def validate_logs():
                 if "sbi_check(A:" in line
                 and "=> OK" in line
             ]
-            assert len(matches) == n, (
+            assert len(matches) == (0 if implementation == "direct" else n), (
                 f"{log_path}: expected {n} successful "
                 f"SBI checks, found {len(matches)}"
             )
 
             if implementation == "native":
                 assert "NATIVE_UVVM_BENCHMARK_COMPLETED" in log
+            elif implementation == "direct":
+                assert f"DIRECT_COCOTB_VERIFIED_COUNT={n}" in log, log_path
+                assert f"DIRECT_COCOTB_BENCHMARK_PASSED N={n}" in log
+                assert "TESTS=1 PASS=1 FAIL=0" in log
             else:
                 assert "TESTS=1 PASS=1 FAIL=0" in log
 
@@ -246,6 +250,33 @@ def validate_bridge_logs():
     print(f"\\nVALIDATED: {total} bridge/timer benchmark runs")
 
 
+def analyze_three_way(results):
+    """Compare all three UART verification implementations."""
+    print("\nTHREE-WAY UART PERFORMANCE COMPARISON")
+    print("-" * 76)
+
+    print(
+        f"{'N':>7} "
+        f"{'Native (s)':>13} "
+        f"{'Python+UVVM (s)':>17} "
+        f"{'Direct (s)':>13} "
+        f"{'Direct/Native':>15}"
+    )
+
+    for n in EXPECTED_COUNTS:
+        native = mean(results["native", n])
+        python = mean(results["python", n])
+        direct = mean(results["direct", n])
+
+        print(
+            f"{n:7d} "
+            f"{native:13.4f} "
+            f"{python:17.4f} "
+            f"{direct:13.4f} "
+            f"{direct/native:14.2f}x"
+        )
+
+
 if __name__ == "__main__":
     results = load_results()
     analyze(results)
@@ -253,3 +284,4 @@ if __name__ == "__main__":
     validate_logs()
     analyze_bridge()
     validate_bridge_logs()
+    analyze_three_way(results)

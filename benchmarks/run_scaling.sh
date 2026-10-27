@@ -19,7 +19,7 @@ mkdir -p "$OUT"
 echo "implementation,transactions,run,wall_seconds" > "$CSV"
 
 for n in 5 50 500 2000; do
-  for implementation in native python; do
+  for implementation in native python direct; do
     for run in 1 2 3 4 5; do
       log="$OUT/${implementation}_${n}_${run}.log"
       timing="$OUT/time.tmp"
@@ -32,7 +32,7 @@ for n in 5 50 500 2000; do
           > "$log" 2>&1
 
         grep -q "NATIVE_UVVM_BENCHMARK_COMPLETED" "$log"
-      else
+      elif [[ "$implementation" == python ]]; then
         BENCH_N="$n" /usr/bin/time -f '%e' -o "$timing" \
           ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
           --vpi="$(cocotb-config --lib-name-path vpi ghdl)" \
@@ -40,6 +40,17 @@ for n in 5 50 500 2000; do
           > "$log" 2>&1
 
         grep -q "TESTS=1 PASS=1 FAIL=0" "$log"
+      else
+        COCOTB_TEST_MODULES=test_uart_direct \
+        COCOTB_TOPLEVEL=uart_direct_th BENCH_N="$n" \
+          /usr/bin/time -f '%e' -o "$timing" \
+          ghdl -r --std=08 -frelaxed-rules -P. uart_direct_th \
+          --vpi="$(cocotb-config --lib-name-path vpi ghdl)" \
+          --assert-level=error --stop-time=10ms \
+          > "$log" 2>&1
+
+        grep -Fq "DIRECT_COCOTB_BENCHMARK_PASSED N=$n" "$log"
+        grep -Fq "TESTS=1 PASS=1 FAIL=0" "$log"
       fi
 
       seconds="$(cat "$timing")"
