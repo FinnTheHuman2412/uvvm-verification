@@ -12,3 +12,8 @@ clean:
 test-cosim:
 	@bash scripts/run_uart_cosim.sh > build/uart_cosim.log 2>&1
 	@tail -n 25 build/uart_cosim.log
+
+.PHONY: regression
+
+regression:
+	@bash benchmarks/run_regression.sh
