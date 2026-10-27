@@ -5,6 +5,7 @@ class UVVMController:
     UART_TX = 0
     SBI_WRITE = 1
     SBI_CHECK = 2
+    UART_EXPECT = 3
 
     def __init__(self, dut):
         self.dut = dut
@@ -60,4 +61,11 @@ class UVVMController:
         self.dut._log.info(
             "UVVM SBI check completed: address=%d, expected=0x%02X",
             address, expected
+        )
+
+    async def uart_expect(self, value):
+        """Queue a UART receive expectation; do not wait for reception."""
+        await self._execute(self.UART_EXPECT, 0, value)
+        self.dut._log.info(
+            "UVVM UART expectation queued: 0x%02X", value
         )

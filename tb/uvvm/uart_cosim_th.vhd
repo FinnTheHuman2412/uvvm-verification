@@ -126,6 +126,14 @@ begin
           sbi_check(SBI_VVCT, 1, cmd_addr, cmd_data, "Python SBI check");
           await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
 
+        when "11" =>
+          -- Queue UART receive verification without blocking.
+          -- The RX VVC executes this command asynchronously.
+          uart_expect(
+            UART_VVCT, 1, RX, cmd_data,
+            "Python queued UART expectation"
+          );
+
         when others =>
           report "Unsupported Python UVVM opcode" severity failure;
       end case;
