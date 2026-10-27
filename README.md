@@ -37,7 +37,7 @@ the VHDL testbenches have already been compiled.
 
 Clone the repository with its UVVM submodule:
 
-    git clone --recurse-submodules <repository-url>
+    git clone --recurse-submodules https://github.com/FinnTheHuman2412/uvvm-verification.git
     cd uvvm-verification
 
 Alternatively, initialize the submodule in an existing checkout:
