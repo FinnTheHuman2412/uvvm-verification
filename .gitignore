@@ -5,3 +5,6 @@ __pycache__/
 
 # Generated benchmark logs
 benchmarks/results/*.log
+
+# Generated functional regression logs
+benchmarks/results/regression/
