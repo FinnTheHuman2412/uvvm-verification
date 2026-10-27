@@ -2,3 +2,6 @@ build/
 sim_build/
 results.xml
 __pycache__/
+
+# Generated benchmark logs
+benchmarks/results/*.log
