@@ -8,6 +8,7 @@ class UVVMController:
     UART_EXPECT = 3
     SBI_WRITE_RAW = 4
     AWAIT_UART_RX = 5
+    NOOP = 6
 
     def __init__(self, dut):
         self.dut = dut
@@ -79,3 +80,7 @@ class UVVMController:
     async def await_uart_rx(self):
         """Wait until queued UVVM UART RX operations finish."""
         await self._execute(self.AWAIT_UART_RX, 0, 0)
+
+    async def noop(self):
+        """Execute an empty Python-to-VHDL command handshake."""
+        await self._execute(self.NOOP, 0, 0)

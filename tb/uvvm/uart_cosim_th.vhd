@@ -143,6 +143,10 @@ begin
           -- Wait for a previously queued UART RX expectation.
           await_completion(UART_VVCT, 1, RX, 13 * 16 * C_CLK_PERIOD);
 
+        when "110" =>
+          -- Bridge-only benchmark: acknowledge without VVC activity.
+          null;
+
         when others =>
           report "Unsupported Python UVVM opcode" severity failure;
       end case;
