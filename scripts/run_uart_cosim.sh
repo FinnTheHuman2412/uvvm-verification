@@ -29,7 +29,7 @@ ghdl -a --std=08 -frelaxed-rules -P. \
 ghdl -e --std=08 -frelaxed-rules -P. uart_cosim_th
 
 # Initialize cocotb.
-export PYTHONPATH="$ROOT/tb/cocotb:${PYTHONPATH:-}"
+export PYTHONPATH="$ROOT:$ROOT/tb/cocotb:${PYTHONPATH:-}"
 export COCOTB_TEST_MODULES=test_uart_cosim
 export COCOTB_TOPLEVEL=uart_cosim_th
 export TOPLEVEL_LANG=vhdl
