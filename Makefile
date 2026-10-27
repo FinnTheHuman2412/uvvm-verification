@@ -6,3 +6,9 @@ test-uart:
 
 clean:
 	rm -rf build
+
+.PHONY: test-cosim
+
+test-cosim:
+	@bash scripts/run_uart_cosim.sh > build/uart_cosim.log 2>&1
+	@tail -n 25 build/uart_cosim.log
