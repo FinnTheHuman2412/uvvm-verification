@@ -41,3 +41,21 @@ async def test_python_sbi_check(dut):
     await uvvm.sbi_check(address=3, expected=0x01)
 
     dut._log.info("SBI register verification completed")
+
+
+@cocotb.test()
+async def test_explicit_uvvm_coordination(dut):
+    uvvm = UVVMController(dut)
+
+    await Timer(500, unit="ns")
+
+    # Queue the expectation before triggering the DUT.
+    await uvvm.uart_expect(0xA5)
+
+    # Trigger UART transmission using the SBI interface.
+    await uvvm.sbi_write_raw(address=2, value=0xA5)
+
+    # Wait for the queued UART verification to complete.
+    await uvvm.await_uart_rx()
+
+    dut._log.info("Explicit UVVM VVC coordination verified")

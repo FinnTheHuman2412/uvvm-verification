@@ -6,6 +6,8 @@ class UVVMController:
     SBI_WRITE = 1
     SBI_CHECK = 2
     UART_EXPECT = 3
+    SBI_WRITE_RAW = 4
+    AWAIT_UART_RX = 5
 
     def __init__(self, dut):
         self.dut = dut
@@ -69,3 +71,11 @@ class UVVMController:
         self.dut._log.info(
             "UVVM UART expectation queued: 0x%02X", value
         )
+
+    async def sbi_write_raw(self, address, value):
+        """Perform an SBI write without additional UART verification."""
+        await self._execute(self.SBI_WRITE_RAW, address, value)
+
+    async def await_uart_rx(self):
+        """Wait until queued UVVM UART RX operations finish."""
+        await self._execute(self.AWAIT_UART_RX, 0, 0)

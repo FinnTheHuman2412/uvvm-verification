@@ -43,7 +43,7 @@ library bitvis_vip_clock_generator;
 entity uart_cosim_th is
   port (
     cmd_valid  : in  std_logic;
-    cmd_opcode : in  std_logic_vector(1 downto 0);
+    cmd_opcode : in  std_logic_vector(2 downto 0);
     cmd_addr   : in  unsigned(2 downto 0);
     cmd_data   : in  std_logic_vector(7 downto 0);
     cmd_busy  : out std_logic := '0';
@@ -101,7 +101,7 @@ begin
       cmd_done <= '0';
 
       case cmd_opcode is
-        when "00" =>
+        when "000" =>
           -- UART transmit followed by DUT readback verification.
           uart_transmit(UART_VVCT, 1, TX, cmd_data, "Python UART TX");
           await_completion(UART_VVCT, 1, TX, 13 * 16 * C_CLK_PERIOD);
@@ -111,7 +111,7 @@ begin
           sbi_check(SBI_VVCT, 1, C_ADDR_RX_DATA, cmd_data, "RX_DATA");
           await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
 
-        when "01" =>
+        when "001" =>
           -- Write a UART register through the SBI VVC.
           -- Expect the UART DUT to transmit the written byte.
           uart_expect(UART_VVCT, 1, RX, cmd_data, "Python UART expect");
@@ -121,18 +121,27 @@ begin
 
           await_completion(UART_VVCT, 1, RX, 13 * 16 * C_CLK_PERIOD);
 
-        when "10" =>
+        when "010" =>
           -- Check an SBI register against the Python-supplied value.
           sbi_check(SBI_VVCT, 1, cmd_addr, cmd_data, "Python SBI check");
           await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
 
-        when "11" =>
+        when "011" =>
           -- Queue UART receive verification without blocking.
           -- The RX VVC executes this command asynchronously.
           uart_expect(
             UART_VVCT, 1, RX, cmd_data,
             "Python queued UART expectation"
           );
+
+        when "100" =>
+          -- Generic SBI write, without an automatic UART expectation.
+          sbi_write(SBI_VVCT, 1, cmd_addr, cmd_data, "Python raw SBI write");
+          await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
+
+        when "101" =>
+          -- Wait for a previously queued UART RX expectation.
+          await_completion(UART_VVCT, 1, RX, 13 * 16 * C_CLK_PERIOD);
 
         when others =>
           report "Unsupported Python UVVM opcode" severity failure;
