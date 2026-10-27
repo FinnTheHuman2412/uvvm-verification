@@ -51,3 +51,46 @@ done
 
 rm -f "$OUT/time.tmp"
 echo "Results saved to: $CSV"
+
+# ------------------------------------------------------------
+# Python-VHDL bridge vs cocotb timer-only benchmark
+# ------------------------------------------------------------
+
+BRIDGE_CSV="$OUT/bridge_scaling.csv"
+echo "implementation,iterations,run,wall_seconds" > "$BRIDGE_CSV"
+
+for n in 1000 10000 100000; do
+  for implementation in timer bridge; do
+
+    if [[ "$implementation" == timer ]]; then
+      module="test_timer_benchmark"
+      marker="TIMER_BENCHMARK_PASSED N=$n"
+    else
+      module="test_bridge_benchmark"
+      marker="BRIDGE_BENCHMARK_PASSED N=$n"
+    fi
+
+    for run in 1 2 3 4 5; do
+      log="$OUT/${implementation}_${n}_${run}.log"
+      timing="$OUT/time.tmp"
+
+      COCOTB_TEST_MODULES="$module" BENCH_N="$n" \
+        /usr/bin/time -f '%e' -o "$timing" \
+        ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+        --vpi="$(cocotb-config --lib-name-path vpi ghdl)" \
+        --assert-level=error --stop-time=1ms \
+        > "$log" 2>&1
+
+      grep -Fq "$marker" "$log"
+      grep -Fq "TESTS=1 PASS=1 FAIL=0" "$log"
+
+      seconds="$(cat "$timing")"
+
+      echo "$implementation,$n,$run,$seconds" >> "$BRIDGE_CSV"
+      echo "$implementation | N=$n | run=$run | ${seconds}s"
+    done
+  done
+done
+
+rm -f "$OUT/time.tmp"
+echo "Bridge results saved to: $BRIDGE_CSV"

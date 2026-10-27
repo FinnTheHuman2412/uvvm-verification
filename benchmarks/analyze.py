@@ -166,8 +166,90 @@ def validate_logs():
     print(f"\nVALIDATED: {total} runs with exact SBI check counts")
 
 
+def analyze_bridge():
+    """Analyze timer-only versus Python-VHDL bridge runtime."""
+    bridge_csv = ROOT / "results" / "bridge_scaling.csv"
+    results = defaultdict(list)
+
+    with bridge_csv.open(newline="") as f:
+        for row in csv.DictReader(f):
+            key = (row["implementation"], int(row["iterations"]))
+            results[key].append(float(row["wall_seconds"]))
+
+    print("\nBRIDGE HANDSHAKE SCALING")
+    print("-" * 70)
+    print(
+        f"{'N':>9} {'Timer (s)':>12} "
+        f"{'Bridge (s)':>12} {'Extra (us/op)':>16}"
+    )
+
+    for n in (1000, 10000, 100000):
+        timer = results["timer", n]
+        bridge = results["bridge", n]
+
+        assert len(timer) == 5
+        assert len(bridge) == 5
+
+        t_mean = mean(timer)
+        b_mean = mean(bridge)
+
+        extra_us = (b_mean - t_mean) * 1e6 / n
+
+        print(
+            f"{n:9d} {t_mean:12.4f} "
+            f"{b_mean:12.4f} {extra_us:16.2f}"
+        )
+
+    print("\nNote: Values include simulator and scheduling overhead.")
+
+
+def validate_bridge_logs():
+    """Validate all bridge and timer benchmark executions."""
+    total = 0
+    csv_path = ROOT / "results" / "bridge_scaling.csv"
+
+    with csv_path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            implementation = row["implementation"]
+            n = int(row["iterations"])
+            run = int(row["run"])
+
+            assert implementation in ("timer", "bridge")
+            assert n in (1000, 10000, 100000)
+            assert float(row["wall_seconds"]) > 0
+
+            log_path = ROOT / "results" / (
+                f"{implementation}_{n}_{run}.log"
+            )
+
+            log = log_path.read_text()
+
+            marker = (
+                f"TIMER_BENCHMARK_PASSED N={n}"
+                if implementation == "timer"
+                else f"BRIDGE_BENCHMARK_PASSED N={n}"
+            )
+
+            assert marker in log, log_path
+            assert "TESTS=1 PASS=1 FAIL=0" in log, log_path
+
+            assert not any(
+                "UVVM:" in line and (
+                    "ID_ALERT" in line or "ERROR #" in line
+                )
+                for line in log.splitlines()
+            ), log_path
+
+            total += 1
+
+    assert total == 30, f"Expected 30 runs, found {total}"
+    print(f"\\nVALIDATED: {total} bridge/timer benchmark runs")
+
+
 if __name__ == "__main__":
     results = load_results()
     analyze(results)
     analyze_regression(results)
     validate_logs()
+    analyze_bridge()
+    validate_bridge_logs()
