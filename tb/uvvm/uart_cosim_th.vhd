@@ -32,6 +32,9 @@ library bitvis_vip_clock_generator;
 context bitvis_vip_clock_generator.vvc_context;
 
 library bitvis_vip_sbi;
+use bitvis_vip_sbi.vvc_methods_pkg.all;
+use bitvis_vip_sbi.td_vvc_framework_common_methods_pkg.all;
+
 library bitvis_vip_uart;
 library bitvis_uart;
 library bitvis_vip_clock_generator;
@@ -68,6 +71,7 @@ architecture struct of uart_cosim_th is
 
   constant C_CLK_PERIOD : time    := 10 ns; -- 100 MHz
   constant C_CLOCK_GEN  : natural := 1;
+  constant C_ADDR_RX_DATA : unsigned(2 downto 0) := "000";
 
 begin
 
@@ -93,6 +97,13 @@ begin
 
       uart_transmit(UART_VVCT, 1, TX, cmd_data, "Python request");
       await_completion(UART_VVCT, 1, TX, 13 * 16 * C_CLK_PERIOD);
+
+      -- Allow the UART receiver to complete.
+      wait for 200 ns;
+
+      -- Independently check the received byte through the SBI interface.
+      sbi_check(SBI_VVCT, 1, C_ADDR_RX_DATA, cmd_data, "RX_DATA");
+      await_completion(SBI_VVCT, 1, 13 * 16 * C_CLK_PERIOD);
 
       cmd_busy <= '0';
       cmd_done <= '1';
