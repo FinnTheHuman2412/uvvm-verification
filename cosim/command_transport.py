@@ -1,6 +1,10 @@
 from cocotb.triggers import Timer, RisingEdge, with_timeout, Lock
 
 
+class UVVMVerificationError(RuntimeError):
+    """A UVVM alert was detected while executing a command."""
+
+
 class CommandTransport:
     def __init__(self, dut, timeout_us=20, signals=None):
         self.dut = dut
@@ -27,6 +31,9 @@ class CommandTransport:
             key: getattr(dut, name)
             for key, name in names.items()
         }
+
+        # Optional verification-result output.
+        self.status = getattr(dut, "cmd_status", None)
 
         self.signals["valid"].value = 0
         self.signals["opcode"].value = 0
@@ -75,6 +82,12 @@ class CommandTransport:
 
                 await Timer(1, unit="ns")
                 assert int(self.signals["busy"].value) == 0
+
+                if self.status is not None:
+                    if int(self.status.value) != 0:
+                        raise UVVMVerificationError(
+                            f"UVVM verification failed for opcode {opcode}"
+                        )
 
                 self.signals["valid"].value = 0
 
