@@ -103,6 +103,33 @@ grep -Fq "CONTROLLER_CANCELLATION_PASSED" "$OUT/controller_cancellation.log"
 grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/controller_cancellation.log"
 echo "  PASS: Controller cancellation handling"
 
+echo "  Transport configuration..."
+COCOTB_TEST_MODULES=test_transport_config \
+COCOTB_TOPLEVEL=uart_cosim_th \
+ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=100us \
+  > "$OUT/transport_config.log" 2>&1
+
+grep -Fq "TRANSPORT_CONFIG_PASSED" "$OUT/transport_config.log"
+grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/transport_config.log"
+echo "  PASS: Transport configuration"
+
+echo "  Independent transport..."
+ghdl -a --std=08 ../../tb/transport/transport_test_th.vhd
+ghdl -e --std=08 transport_test_th
+
+COCOTB_TEST_MODULES=test_transport_independent \
+COCOTB_TOPLEVEL=transport_test_th \
+ghdl -r --std=08 transport_test_th \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=10us \
+  > "$OUT/independent_transport.log" 2>&1
+
+grep -Fq "INDEPENDENT_TRANSPORT_PASSED" "$OUT/independent_transport.log"
+grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/independent_transport.log"
+echo "  PASS: Independent transport"
+
 echo "  Direct cocotb..."
 COCOTB_TEST_MODULES=test_uart_direct \
 COCOTB_TOPLEVEL=uart_direct_th \
