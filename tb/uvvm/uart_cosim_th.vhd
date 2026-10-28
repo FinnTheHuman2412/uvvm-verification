@@ -83,10 +83,10 @@ begin
 
   -- Python-controlled UVVM command sequencer
   p_cosim : process
-    variable v_errors_before : natural;
-    variable v_tb_errors_before : natural;
-    variable v_failures_before : natural;
-    variable v_tb_failures_before : natural;
+    variable v_errors_reported : natural := 0;
+    variable v_tb_errors_reported : natural := 0;
+    variable v_failures_reported : natural := 0;
+    variable v_tb_failures_reported : natural := 0;
   begin
     cmd_busy <= '0';
     cmd_done <= '0';
@@ -114,11 +114,6 @@ begin
       cmd_busy <= '1';
       cmd_done <= '0';
       cmd_status <= '0';
-
-      v_errors_before := get_alert_counter(ERROR);
-      v_tb_errors_before := get_alert_counter(TB_ERROR);
-      v_failures_before := get_alert_counter(FAILURE);
-      v_tb_failures_before := get_alert_counter(TB_FAILURE);
 
       case cmd_opcode is
         when "000" =>
@@ -171,14 +166,20 @@ begin
           report "Unsupported Python UVVM opcode" severity failure;
       end case;
 
-      if get_alert_counter(ERROR) > v_errors_before or
-         get_alert_counter(TB_ERROR) > v_tb_errors_before or
-         get_alert_counter(FAILURE) > v_failures_before or
-         get_alert_counter(TB_FAILURE) > v_tb_failures_before then
+      if get_alert_counter(ERROR) > v_errors_reported or
+         get_alert_counter(TB_ERROR) > v_tb_errors_reported or
+         get_alert_counter(FAILURE) > v_failures_reported or
+         get_alert_counter(TB_FAILURE) > v_tb_failures_reported then
         cmd_status <= '1';
       else
         cmd_status <= '0';
       end if;
+
+      -- Record the alert counters consumed by this command response.
+      v_errors_reported := get_alert_counter(ERROR);
+      v_tb_errors_reported := get_alert_counter(TB_ERROR);
+      v_failures_reported := get_alert_counter(FAILURE);
+      v_tb_failures_reported := get_alert_counter(TB_FAILURE);
 
       cmd_busy <= '0';
       cmd_done <= '1';
