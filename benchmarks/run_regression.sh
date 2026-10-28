@@ -79,6 +79,18 @@ grep -Fq "CONCURRENT_UART_PASSED N=5" "$OUT/concurrent.log"
 grep -Fq "TESTS=2 PASS=2 FAIL=0" "$OUT/concurrent.log"
 echo "  PASS: Concurrent Python commands"
 
+echo "  Controller timeout handling..."
+COCOTB_TEST_MODULES=test_controller_timeout \
+COCOTB_TOPLEVEL=uart_cosim_th \
+ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=100us \
+  > "$OUT/controller_timeout.log" 2>&1
+
+grep -Fq "CONTROLLER_TIMEOUT_PASSED" "$OUT/controller_timeout.log"
+grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/controller_timeout.log"
+echo "  PASS: Controller timeout handling"
+
 echo "  Direct cocotb..."
 COCOTB_TEST_MODULES=test_uart_direct \
 COCOTB_TOPLEVEL=uart_direct_th \

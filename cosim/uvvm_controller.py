@@ -10,9 +10,11 @@ class UVVMController:
     AWAIT_UART_RX = 5
     NOOP = 6
 
-    def __init__(self, dut):
+    def __init__(self, dut, timeout_us=20):
         self.dut = dut
         self._lock = Lock()
+        self._faulted = False
+        self._timeout_us = timeout_us
 
         dut.cmd_valid.value = 0
         dut.cmd_opcode.value = 0
@@ -21,6 +23,11 @@ class UVVMController:
 
     async def _execute(self, opcode, address, value):
         async with self._lock:
+            if self._faulted:
+                raise RuntimeError(
+                    "UVVM controller is faulted; restart the simulation"
+                )
+
             if not 0 <= value <= 255:
                 raise ValueError("Data must be an 8-bit unsigned value")
 
@@ -29,26 +36,31 @@ class UVVMController:
 
             dut = self.dut
 
-            assert int(dut.cmd_valid.value) == 0
+            try:
+                assert int(dut.cmd_valid.value) == 0
 
-            dut.cmd_opcode.value = opcode
-            dut.cmd_addr.value = address
-            dut.cmd_data.value = value
-            dut.cmd_valid.value = 1
+                dut.cmd_opcode.value = opcode
+                dut.cmd_addr.value = address
+                dut.cmd_data.value = value
+                dut.cmd_valid.value = 1
 
-            await with_timeout(
-                RisingEdge(dut.cmd_done),
-                20,
-                "us"
-            )
+                await with_timeout(
+                    RisingEdge(dut.cmd_done),
+                    self._timeout_us,
+                    "us"
+                )
 
-            await Timer(1, unit="ns")
-            assert int(dut.cmd_busy.value) == 0
+                await Timer(1, unit="ns")
+                assert int(dut.cmd_busy.value) == 0
 
-            dut.cmd_valid.value = 0
+                dut.cmd_valid.value = 0
 
-            await Timer(1, unit="ns")
-            assert int(dut.cmd_done.value) == 0
+                await Timer(1, unit="ns")
+                assert int(dut.cmd_done.value) == 0
+
+            except BaseException:
+                self._faulted = True
+                raise
 
     async def uart_transmit(self, value):
         await self._execute(self.UART_TX, 0, value)
