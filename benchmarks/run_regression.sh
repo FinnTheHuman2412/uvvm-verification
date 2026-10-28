@@ -130,6 +130,20 @@ grep -Fq "INDEPENDENT_TRANSPORT_PASSED" "$OUT/independent_transport.log"
 grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/independent_transport.log"
 echo "  PASS: Independent transport"
 
+echo "  Verification failure propagation..."
+COCOTB_TEST_MODULES=test_verification_failure \
+COCOTB_TOPLEVEL=uart_cosim_th \
+ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+  -gG_ALLOW_ERROR_REPORTING=true \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=100us \
+  > "$OUT/verification_failure.log" 2>&1
+
+grep -Fq "UVVM: ***  ERROR #1  ***" "$OUT/verification_failure.log"
+grep -Fq "VERIFICATION_FAILURE_PASSED" "$OUT/verification_failure.log"
+grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/verification_failure.log"
+echo "  PASS: Verification failure propagation"
+
 echo "  Direct cocotb..."
 COCOTB_TEST_MODULES=test_uart_direct \
 COCOTB_TOPLEVEL=uart_direct_th \

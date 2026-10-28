@@ -41,13 +41,17 @@ library bitvis_vip_clock_generator;
 
 -- Test harness entity
 entity uart_cosim_th is
+  generic (
+    G_ALLOW_ERROR_REPORTING : boolean := false
+  );
   port (
     cmd_valid  : in  std_logic;
     cmd_opcode : in  std_logic_vector(2 downto 0);
     cmd_addr   : in  unsigned(2 downto 0);
     cmd_data   : in  std_logic_vector(7 downto 0);
     cmd_busy  : out std_logic := '0';
-    cmd_done  : out std_logic := '0'
+    cmd_done  : out std_logic := '0';
+    cmd_status : out std_logic := '0'
   );
 end entity uart_cosim_th;
 
@@ -79,11 +83,21 @@ begin
 
   -- Python-controlled UVVM command sequencer
   p_cosim : process
+    variable v_errors_before : natural;
+    variable v_tb_errors_before : natural;
+    variable v_failures_before : natural;
+    variable v_tb_failures_before : natural;
   begin
     cmd_busy <= '0';
     cmd_done <= '0';
+    cmd_status <= '0';
 
     await_uvvm_initialization(VOID);
+
+    -- Allow expected ERROR alerts in dedicated negative tests only.
+    if G_ALLOW_ERROR_REPORTING then
+      set_alert_stop_limit(ERROR, 0);
+    end if;
 
     start_clock(CLOCK_GENERATOR_VVCT, 1, "Start UART clock");
     wait for 10 * C_CLK_PERIOD;
@@ -99,6 +113,12 @@ begin
 
       cmd_busy <= '1';
       cmd_done <= '0';
+      cmd_status <= '0';
+
+      v_errors_before := get_alert_counter(ERROR);
+      v_tb_errors_before := get_alert_counter(TB_ERROR);
+      v_failures_before := get_alert_counter(FAILURE);
+      v_tb_failures_before := get_alert_counter(TB_FAILURE);
 
       case cmd_opcode is
         when "000" =>
@@ -150,6 +170,15 @@ begin
         when others =>
           report "Unsupported Python UVVM opcode" severity failure;
       end case;
+
+      if get_alert_counter(ERROR) > v_errors_before or
+         get_alert_counter(TB_ERROR) > v_tb_errors_before or
+         get_alert_counter(FAILURE) > v_failures_before or
+         get_alert_counter(TB_FAILURE) > v_tb_failures_before then
+        cmd_status <= '1';
+      else
+        cmd_status <= '0';
+      end if;
 
       cmd_busy <= '0';
       cmd_done <= '1';
