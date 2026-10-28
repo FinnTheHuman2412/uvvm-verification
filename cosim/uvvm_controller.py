@@ -10,6 +10,14 @@ class UVVMController(CommandTransport):
     AWAIT_UART_RX = 5
     NOOP = 6
 
+    def __init__(self, dut, timeout_us=20, signals=None):
+        super().__init__(
+            dut,
+            timeout_us=timeout_us,
+            signals=signals,
+            require_status=True,
+        )
+
     async def uart_transmit(self, value):
         await self._execute(self.UART_TX, 0, value)
         self.dut._log.info("UVVM UART verified: 0x%02X", value)

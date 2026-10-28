@@ -23,6 +23,9 @@ async def test_verification_failure(dut):
             "Expected UVVMVerificationError"
         )
 
-    assert controller._faulted
+    assert not controller._faulted
+
+    # The verification failed, but transport remains operational.
+    await controller.noop()
 
     dut._log.info("VERIFICATION_FAILURE_PASSED")

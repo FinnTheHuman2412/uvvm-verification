@@ -6,7 +6,7 @@ class UVVMVerificationError(RuntimeError):
 
 
 class CommandTransport:
-    def __init__(self, dut, timeout_us=20, signals=None):
+    def __init__(self, dut, timeout_us=20, signals=None, require_status=False):
         self.dut = dut
         self._lock = Lock()
         self._faulted = False
@@ -34,6 +34,10 @@ class CommandTransport:
 
         # Optional verification-result output.
         self.status = getattr(dut, "cmd_status", None)
+        if require_status and self.status is None:
+            raise ValueError(
+                "Required verification status signal 'cmd_status' is missing"
+            )
 
         self.signals["valid"].value = 0
         self.signals["opcode"].value = 0
@@ -83,17 +87,24 @@ class CommandTransport:
                 await Timer(1, unit="ns")
                 assert int(self.signals["busy"].value) == 0
 
-                if self.status is not None:
-                    if int(self.status.value) != 0:
-                        raise UVVMVerificationError(
-                            f"UVVM verification failed for opcode {opcode}"
-                        )
+                verification_failed = (
+                    self.status is not None
+                    and int(self.status.value) != 0
+                )
 
                 self.signals["valid"].value = 0
 
                 await Timer(1, unit="ns")
                 assert int(self.signals["done"].value) == 0
 
+                if verification_failed:
+                    raise UVVMVerificationError(
+                        f"UVVM verification failed for opcode {opcode}"
+                    )
+
+            except UVVMVerificationError:
+                # Verification failed, but the handshake completed.
+                raise
             except BaseException:
                 self._faulted = True
                 raise
