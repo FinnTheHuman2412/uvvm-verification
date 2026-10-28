@@ -1,4 +1,4 @@
-from cocotb.triggers import Timer, RisingEdge, with_timeout
+from cocotb.triggers import Timer, RisingEdge, with_timeout, Lock
 
 
 class UVVMController:
@@ -12,6 +12,7 @@ class UVVMController:
 
     def __init__(self, dut):
         self.dut = dut
+        self._lock = Lock()
 
         dut.cmd_valid.value = 0
         dut.cmd_opcode.value = 0
@@ -19,34 +20,35 @@ class UVVMController:
         dut.cmd_data.value = 0
 
     async def _execute(self, opcode, address, value):
-        if not 0 <= value <= 255:
-            raise ValueError("Data must be an 8-bit unsigned value")
+        async with self._lock:
+            if not 0 <= value <= 255:
+                raise ValueError("Data must be an 8-bit unsigned value")
 
-        if not 0 <= address <= 7:
-            raise ValueError("SBI address must be between 0 and 7")
+            if not 0 <= address <= 7:
+                raise ValueError("SBI address must be between 0 and 7")
 
-        dut = self.dut
+            dut = self.dut
 
-        assert int(dut.cmd_valid.value) == 0
+            assert int(dut.cmd_valid.value) == 0
 
-        dut.cmd_opcode.value = opcode
-        dut.cmd_addr.value = address
-        dut.cmd_data.value = value
-        dut.cmd_valid.value = 1
+            dut.cmd_opcode.value = opcode
+            dut.cmd_addr.value = address
+            dut.cmd_data.value = value
+            dut.cmd_valid.value = 1
 
-        await with_timeout(
-            RisingEdge(dut.cmd_done),
-            20,
-            "us"
-        )
+            await with_timeout(
+                RisingEdge(dut.cmd_done),
+                20,
+                "us"
+            )
 
-        await Timer(1, unit="ns")
-        assert int(dut.cmd_busy.value) == 0
+            await Timer(1, unit="ns")
+            assert int(dut.cmd_busy.value) == 0
 
-        dut.cmd_valid.value = 0
+            dut.cmd_valid.value = 0
 
-        await Timer(1, unit="ns")
-        assert int(dut.cmd_done.value) == 0
+            await Timer(1, unit="ns")
+            assert int(dut.cmd_done.value) == 0
 
     async def uart_transmit(self, value):
         await self._execute(self.UART_TX, 0, value)

@@ -66,6 +66,19 @@ ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
 grep -Eq 'TESTS=4 PASS=4 FAIL=0' "$OUT/python_uvvm.log"
 echo "  PASS: Python-controlled UVVM"
 
+echo "  Concurrent Python commands..."
+COCOTB_TEST_MODULES=test_concurrent_commands \
+COCOTB_TOPLEVEL=uart_cosim_th \
+ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=100us \
+  > "$OUT/concurrent.log" 2>&1
+
+grep -Fq "CONCURRENT_COMMANDS_PASSED N=20" "$OUT/concurrent.log"
+grep -Fq "CONCURRENT_UART_PASSED N=5" "$OUT/concurrent.log"
+grep -Fq "TESTS=2 PASS=2 FAIL=0" "$OUT/concurrent.log"
+echo "  PASS: Concurrent Python commands"
+
 echo "  Direct cocotb..."
 COCOTB_TEST_MODULES=test_uart_direct \
 COCOTB_TOPLEVEL=uart_direct_th \
