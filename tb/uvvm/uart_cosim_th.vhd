@@ -51,7 +51,8 @@ entity uart_cosim_th is
     cmd_data   : in  std_logic_vector(7 downto 0);
     cmd_busy  : out std_logic := '0';
     cmd_done  : out std_logic := '0';
-    cmd_status : out std_logic := '0'
+    cmd_status : out std_logic := '0';
+    cmd_ready  : out std_logic := '0'
   );
 end entity uart_cosim_th;
 
@@ -91,6 +92,7 @@ begin
     cmd_busy <= '0';
     cmd_done <= '0';
     cmd_status <= '0';
+    cmd_ready <= '0';
 
     await_uvvm_initialization(VOID);
 
@@ -107,6 +109,8 @@ begin
 
     shared_uart_vvc_config(RX, 1).bfm_config.bit_time :=
       16 * C_CLK_PERIOD;
+
+    cmd_ready <= '1';
 
     loop
       wait until cmd_valid = '1';

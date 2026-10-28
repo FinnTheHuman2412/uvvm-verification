@@ -158,6 +158,18 @@ grep -Fq "ASYNC_FAILURE_RECOVERY_PASSED" "$OUT/async_failure.log"
 grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/async_failure.log"
 echo "  PASS: Asynchronous verification failure"
 
+echo "  Startup readiness handshake..."
+COCOTB_TEST_MODULES=test_startup \
+COCOTB_TOPLEVEL=uart_cosim_th \
+ghdl -r --std=08 -frelaxed-rules -P. uart_cosim_th \
+  --vpi="$VPI" \
+  --assert-level=error --stop-time=100us \
+  > "$OUT/startup.log" 2>&1
+
+grep -Fq "STARTUP_HANDSHAKE_PASSED" "$OUT/startup.log"
+grep -Fq "TESTS=1 PASS=1 FAIL=0" "$OUT/startup.log"
+echo "  PASS: Startup readiness handshake"
+
 echo "  Direct cocotb..."
 COCOTB_TEST_MODULES=test_uart_direct \
 COCOTB_TOPLEVEL=uart_direct_th \
