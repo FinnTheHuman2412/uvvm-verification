@@ -1,3 +1,4 @@
+from cocotb.triggers import RisingEdge, with_timeout
 from cosim.command_transport import CommandTransport
 
 
@@ -17,6 +18,23 @@ class UVVMController(CommandTransport):
             signals=signals,
             require_status=True,
         )
+        from cocotb.triggers import Lock
+        self._ready_lock = Lock()
+        self._ready_checked = False
+
+    async def _execute(self, opcode, address, value):
+        async with self._ready_lock:
+            if not self._ready_checked:
+                ready = getattr(self.dut, "cmd_ready")
+                if ready.value != 1:
+                    await with_timeout(
+                        RisingEdge(ready),
+                        self._timeout_us,
+                        "us",
+                    )
+                self._ready_checked = True
+
+        await super()._execute(opcode, address, value)
 
     async def uart_transmit(self, value):
         await self._execute(self.UART_TX, 0, value)
