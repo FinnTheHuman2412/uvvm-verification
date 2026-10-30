@@ -6,7 +6,7 @@ class UVVMVerificationError(RuntimeError):
 
 
 class CommandTransport:
-    def __init__(self, dut, timeout_us=20, signals=None, require_status=False):
+    def __init__(self, dut, timeout_us=20, signals=None, require_status=False, extra_signals=None):
         self.dut = dut
         self._lock = Lock()
         self._faulted = False
@@ -27,6 +27,8 @@ class CommandTransport:
                 raise ValueError(f"Unknown signal mappings: {unknown}")
             names.update(signals)
 
+        names.update(extra_signals or {})
+
         self.signals = {
             key: getattr(dut, name)
             for key, name in names.items()
@@ -44,7 +46,7 @@ class CommandTransport:
         self.signals["address"].value = 0
         self.signals["data"].value = 0
 
-    async def _execute(self, opcode, address, value):
+    async def _execute(self, opcode, address, value, **fields):
         async with self._lock:
             if self._faulted:
                 raise RuntimeError(
@@ -68,11 +70,17 @@ class CommandTransport:
                     f"Opcode must be between 0 and {opcode_max}"
                 )
 
+            for key, value_field in fields.items():
+                if not 0 <= value_field < (1 << len(self.signals[key])):
+                    raise ValueError(f"Invalid {key}: {value_field}")
+
             dut = self.dut
 
             try:
                 assert int(self.signals["valid"].value) == 0
 
+                for key, value_field in fields.items():
+                    self.signals[key].value = value_field
                 self.signals["opcode"].value = opcode
                 self.signals["address"].value = address
                 self.signals["data"].value = value
@@ -87,20 +95,14 @@ class CommandTransport:
                 await Timer(1, unit="ns")
                 assert int(self.signals["busy"].value) == 0
 
-                verification_failed = (
-                    self.status is not None
-                    and int(self.status.value) != 0
-                )
+                status = int(self.status.value) if self.status is not None else 0
 
                 self.signals["valid"].value = 0
 
                 await Timer(1, unit="ns")
                 assert int(self.signals["done"].value) == 0
 
-                if verification_failed:
-                    raise UVVMVerificationError(
-                        f"UVVM verification failed for opcode {opcode}"
-                    )
+                self._check_status(status, opcode)
 
             except UVVMVerificationError:
                 # Verification failed, but the handshake completed.
@@ -109,3 +111,9 @@ class CommandTransport:
                 self._faulted = True
                 raise
 
+
+    def _check_status(self, status, opcode):
+        if status:
+            raise UVVMVerificationError(
+                f"UVVM verification failed for opcode {opcode}"
+            )
