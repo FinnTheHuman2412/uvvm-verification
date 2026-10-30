@@ -17,3 +17,7 @@ test-cosim:
 
 regression:
 	@bash benchmarks/run_regression.sh
+
+.PHONY: test-generic
+test-generic:
+	@bash scripts/run_generic_cosim.sh
